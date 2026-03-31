@@ -1,0 +1,111 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "A user profile in the social network.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "The user's unique ID." },
+        "displayName": { "type": "string", "description": "The user's display name." },
+        "username": { "type": "string", "description": "The user's unique username." },
+        "email": { "type": "string", "description": "The user's email address." },
+        "bio": { "type": "string", "description": "The user's biography." },
+        "photoURL": { "type": "string", "description": "URL to the user's profile picture." },
+        "followersCount": { "type": "number", "description": "Number of followers." },
+        "followingCount": { "type": "number", "description": "Number of users this user is following." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the user was created." }
+      },
+      "required": ["uid", "displayName", "username", "followersCount", "followingCount", "createdAt"]
+    },
+    "Post": {
+      "title": "Post",
+      "description": "An image post created by a user.",
+      "type": "object",
+      "properties": {
+        "authorId": { "type": "string", "description": "UID of the user who created the post." },
+        "imageUrl": { "type": "string", "description": "URL of the uploaded image." },
+        "caption": { "type": "string", "description": "Caption for the post." },
+        "dominantColor": { "type": "string", "description": "Hex color code for the dynamic UI." },
+        "likesCount": { "type": "number", "description": "Number of likes." },
+        "commentsCount": { "type": "number", "description": "Number of comments." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the post was created." }
+      },
+      "required": ["authorId", "imageUrl", "likesCount", "commentsCount", "createdAt"]
+    },
+    "Comment": {
+      "title": "Comment",
+      "description": "A comment on a post.",
+      "type": "object",
+      "properties": {
+        "postId": { "type": "string", "description": "ID of the post being commented on." },
+        "authorId": { "type": "string", "description": "UID of the user who wrote the comment." },
+        "text": { "type": "string", "description": "The comment text." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the comment was created." }
+      },
+      "required": ["postId", "authorId", "text", "createdAt"]
+    },
+    "Like": {
+      "title": "Like",
+      "description": "A like on a post.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the user who liked the post." },
+        "postId": { "type": "string", "description": "ID of the liked post." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the like was created." }
+      },
+      "required": ["userId", "postId", "createdAt"]
+    },
+    "Follow": {
+      "title": "Follow",
+      "description": "A follow relationship between users.",
+      "type": "object",
+      "properties": {
+        "followerId": { "type": "string", "description": "UID of the user who is following." },
+        "followingId": { "type": "string", "description": "UID of the user being followed." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the follow was created." }
+      },
+      "required": ["followerId", "followingId", "createdAt"]
+    },
+    "Notification": {
+      "title": "Notification",
+      "description": "A notification for a user.",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "description": "UID of the recipient user." },
+        "actorId": { "type": "string", "description": "UID of the user who triggered the notification." },
+        "type": { "type": "string", "enum": ["like", "comment", "follow"], "description": "Type of notification." },
+        "postId": { "type": "string", "description": "ID of the related post (if applicable)." },
+        "commentId": { "type": "string", "description": "ID of the related comment (if applicable)." },
+        "read": { "type": "boolean", "description": "Whether the notification has been read." },
+        "createdAt": { "type": "string", "format": "date-time", "description": "When the notification was created." }
+      },
+      "required": ["userId", "actorId", "type", "read", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user profiles."
+    },
+    "/posts/{postId}": {
+      "schema": { "$ref": "#/entities/Post" },
+      "description": "Stores image posts."
+    },
+    "/comments/{commentId}": {
+      "schema": { "$ref": "#/entities/Comment" },
+      "description": "Stores comments on posts."
+    },
+    "/likes/{likeId}": {
+      "schema": { "$ref": "#/entities/Like" },
+      "description": "Stores post likes. ID is usually {userId}_{postId}."
+    },
+    "/follows/{followId}": {
+      "schema": { "$ref": "#/entities/Follow" },
+      "description": "Stores follow relationships. ID is usually {followerId}_{followingId}."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/Notification" },
+      "description": "Stores user notifications."
+    }
+  }
+}

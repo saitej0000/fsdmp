@@ -1,0 +1,228 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isDocOwner(field) {
+      return isAuthenticated() && (field in resource.data) && request.auth.uid == resource.data[field];
+    }
+
+    function isNewDocOwner(field) {
+      return isAuthenticated() && (field in request.resource.data) && request.auth.uid == request.resource.data[field];
+    }
+
+    function fieldUnchanged(field) {
+      return !request.resource.data.diff(resource.data).affectedKeys().has(field);
+    }
+
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+
+    function hasOnlyAllowedFields(fields) {
+      return request.resource.data.keys().hasOnly(fields);
+    }
+
+    function isValidString(field, minLen, maxLen) {
+      return request.resource.data[field] is string &&
+             request.resource.data[field].size() >= minLen &&
+             request.resource.data[field].size() <= maxLen;
+    }
+
+    function isValidOptionalString(field, minLen, maxLen) {
+      return !(field in request.resource.data) ||
+             request.resource.data[field] == null ||
+             (request.resource.data[field] is string &&
+              request.resource.data[field].size() >= minLen &&
+              request.resource.data[field].size() <= maxLen);
+    }
+
+    function isTimestamp(field) {
+      return request.resource.data[field] is timestamp;
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    function isValidUser() {
+      return hasRequiredFields(['uid', 'displayName', 'username']) &&
+             isValidString('uid', 1, 128) &&
+             isValidString('displayName', 0, 100) &&
+             isValidString('username', 0, 50) &&
+             isValidOptionalString('bio', 0, 500) &&
+             isValidOptionalString('photoURL', 0, 2000) &&
+             isValidOptionalString('email', 0, 200);
+    }
+
+    function isValidPost() {
+      return hasOnlyAllowedFields(['authorId', 'imageUrl', 'caption', 'dominantColor', 'likesCount', 'commentsCount', 'createdAt']) &&
+             hasRequiredFields(['authorId', 'imageUrl', 'likesCount', 'commentsCount', 'createdAt']) &&
+             isValidString('authorId', 1, 128) &&
+             isValidString('imageUrl', 1, 1000) &&
+             isValidOptionalString('caption', 0, 2200) &&
+             isValidOptionalString('dominantColor', 0, 20) &&
+             request.resource.data.likesCount is number && request.resource.data.likesCount >= 0 &&
+             request.resource.data.commentsCount is number && request.resource.data.commentsCount >= 0 &&
+             isTimestamp('createdAt');
+    }
+
+    function isValidComment() {
+      return hasOnlyAllowedFields(['postId', 'authorId', 'text', 'createdAt']) &&
+             hasRequiredFields(['postId', 'authorId', 'text', 'createdAt']) &&
+             isValidString('postId', 1, 128) &&
+             isValidString('authorId', 1, 128) &&
+             isValidString('text', 1, 1000) &&
+             isTimestamp('createdAt');
+    }
+
+    function isValidLike() {
+      return hasOnlyAllowedFields(['userId', 'postId', 'createdAt']) &&
+             hasRequiredFields(['userId', 'postId', 'createdAt']) &&
+             isValidString('userId', 1, 128) &&
+             isValidString('postId', 1, 128) &&
+             isTimestamp('createdAt');
+    }
+
+    function isValidFollow() {
+      return hasOnlyAllowedFields(['followerId', 'followingId', 'createdAt']) &&
+             hasRequiredFields(['followerId', 'followingId', 'createdAt']) &&
+             isValidString('followerId', 1, 128) &&
+             isValidString('followingId', 1, 128) &&
+             isTimestamp('createdAt');
+    }
+
+    function isValidNotification() {
+      return hasOnlyAllowedFields(['userId', 'actorId', 'type', 'postId', 'commentId', 'read', 'createdAt']) &&
+             hasRequiredFields(['userId', 'actorId', 'type', 'read', 'createdAt']) &&
+             isValidString('userId', 1, 128) &&
+             isValidString('actorId', 1, 128) &&
+             request.resource.data.type in ['like', 'comment', 'follow'] &&
+             isValidOptionalString('postId', 0, 128) &&
+             isValidOptionalString('commentId', 0, 128) &&
+             request.resource.data.read is bool &&
+             isTimestamp('createdAt');
+    }
+
+    function isValidConversation() {
+      return hasOnlyAllowedFields(['participantIds', 'lastMessage', 'lastMessageAt', 'createdAt', 'updatedAt']) &&
+             hasRequiredFields(['participantIds', 'createdAt', 'updatedAt']) &&
+             request.resource.data.participantIds is list &&
+             request.resource.data.participantIds.size() == 2 &&
+             isValidOptionalString('lastMessage', 0, 2000) &&
+             (!('lastMessageAt' in request.resource.data) || isTimestamp('lastMessageAt')) &&
+             isTimestamp('createdAt') &&
+             isTimestamp('updatedAt');
+    }
+
+    function isValidMessage() {
+      return hasOnlyAllowedFields(['conversationId', 'senderId', 'text', 'createdAt']) &&
+             hasRequiredFields(['conversationId', 'senderId', 'text', 'createdAt']) &&
+             isValidString('conversationId', 1, 128) &&
+             isValidString('senderId', 1, 128) &&
+             isValidString('text', 1, 2000) &&
+             isTimestamp('createdAt');
+    }
+
+    // ===============================================================
+    // Counter Update Validators
+    // ===============================================================
+
+    function isValidPostCounterUpdate() {
+      let diff = request.resource.data.diff(resource.data);
+      let allowedKeys = ['likesCount', 'commentsCount'];
+      let oldLikes = resource.data.get('likesCount', 0);
+      let newLikes = request.resource.data.get('likesCount', 0);
+      let oldComments = resource.data.get('commentsCount', 0);
+      let newComments = request.resource.data.get('commentsCount', 0);
+      return diff.affectedKeys().hasOnly(allowedKeys) &&
+             (
+               (!diff.affectedKeys().has('likesCount') || newLikes == oldLikes + 1 || newLikes == oldLikes - 1) &&
+               (!diff.affectedKeys().has('commentsCount') || newComments == oldComments + 1 || newComments == oldComments - 1)
+             );
+    }
+
+    function isValidUserCounterUpdate() {
+      let diff = request.resource.data.diff(resource.data);
+      let allowedKeys = ['followersCount', 'followingCount'];
+      let oldFollowers = resource.data.get('followersCount', 0);
+      let newFollowers = request.resource.data.get('followersCount', 0);
+      let oldFollowing = resource.data.get('followingCount', 0);
+      let newFollowing = request.resource.data.get('followingCount', 0);
+      return diff.affectedKeys().hasOnly(allowedKeys) &&
+             (
+               (!diff.affectedKeys().has('followersCount') || newFollowers == oldFollowers + 1 || newFollowers == oldFollowers - 1) &&
+               (!diff.affectedKeys().has('followingCount') || newFollowing == oldFollowing + 1 || newFollowing == oldFollowing - 1)
+             );
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if true;
+      allow create: if (isOwner(userId) && isNewDocOwner('uid') && isValidUser()) || (userId.matches('^mock_.*') && isValidUser());
+      allow update: if isOwner(userId);
+    }
+
+    match /posts/{postId} {
+      allow read: if true;
+      allow create: if (isNewDocOwner('authorId') && isValidPost()) || (('authorId' in request.resource.data) && request.resource.data.authorId.matches('^mock_.*') && isValidPost());
+      allow update: if isAuthenticated() && (
+        (isDocOwner('authorId') && fieldUnchanged('authorId') && fieldUnchanged('createdAt') && isValidPost()) ||
+        (isValidPostCounterUpdate())
+      );
+      allow delete: if isDocOwner('authorId');
+    }
+
+    match /comments/{commentId} {
+      allow read: if true;
+      allow create: if isNewDocOwner('authorId') && isValidComment();
+      allow update: if isDocOwner('authorId') && fieldUnchanged('authorId') && fieldUnchanged('postId') && fieldUnchanged('createdAt') && isValidComment();
+      allow delete: if isDocOwner('authorId') || (isAuthenticated() && get(/databases/$(database)/documents/posts/$(resource.data.postId)).data.authorId == request.auth.uid);
+    }
+
+    match /likes/{likeId} {
+      allow read: if true;
+      allow create: if isNewDocOwner('userId') && isValidLike();
+      allow update: if isDocOwner('userId') && isNewDocOwner('userId') && isValidLike();
+      allow delete: if isDocOwner('userId');
+    }
+
+    match /follows/{followId} {
+      allow read: if true;
+      allow create: if isNewDocOwner('followerId') && isValidFollow();
+      allow delete: if isDocOwner('followerId');
+    }
+
+    match /notifications/{notificationId} {
+      allow read: if isDocOwner('userId');
+      allow create: if isNewDocOwner('actorId') && isValidNotification();
+      allow update: if isDocOwner('userId') && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']) && request.resource.data.read is bool;
+      allow delete: if isDocOwner('userId');
+    }
+
+    match /conversations/{conversationId} {
+      allow read: if isAuthenticated() && request.auth.uid in resource.data.participantIds;
+      allow create: if isAuthenticated() && request.auth.uid in request.resource.data.participantIds && isValidConversation();
+      allow update: if isAuthenticated() && request.auth.uid in resource.data.participantIds && isValidConversation();
+    }
+
+    match /messages/{messageId} {
+      allow read: if isAuthenticated() && request.auth.uid in get(/databases/$(database)/documents/conversations/$(resource.data.conversationId)).data.participantIds;
+      allow create: if isAuthenticated() && isNewDocOwner('senderId') && request.auth.uid in get(/databases/$(database)/documents/conversations/$(request.resource.data.conversationId)).data.participantIds && isValidMessage();
+    }
+  }
+}
