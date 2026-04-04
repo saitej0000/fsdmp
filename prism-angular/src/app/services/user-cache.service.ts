@@ -9,11 +9,11 @@ export class UserCacheService {
   private userCache = new Map<string, any>();
   private pendingRequests = new Map<string, Promise<any>>();
 
-  constructor(private firebaseService: FirebaseService) {}
+  constructor(private firebaseService: FirebaseService) { }
 
   async getUserData(userId: string) {
     if (!userId) return null;
-    
+
     if (this.userCache.has(userId)) {
       return this.userCache.get(userId);
     }
