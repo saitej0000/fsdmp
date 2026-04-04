@@ -1,21 +1,23 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { filter, map, take } from 'rxjs';
 
-export const authGuard: CanActivateFn = (route, state) => {
+export const authGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (authService.loading()) {
-    // Ideally we return true or wait till it resolves, but for simplicity let's assume 
-    // real app uses RxJS filters or a resolver. For now, since signals are synchronous,
-    // if loading is true, we might just let it pass or redirect conditionally.
-    // If not loading and not user, redirect to auth.
-  }
-
-  if (!authService.loading() && !authService.user()) {
-    router.navigate(['/auth']);
-    return false;
-  }
-  return true;
+  // Wait until loading is done, then check user
+  return toObservable(authService.loading).pipe(
+    filter(loading => !loading),
+    take(1),
+    map(() => {
+      if (!authService.user()) {
+        router.navigate(['/auth']);
+        return false;
+      }
+      return true;
+    })
+  );
 };

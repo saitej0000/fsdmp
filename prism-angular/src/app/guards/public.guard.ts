@@ -1,14 +1,23 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
+import { toObservable } from '@angular/core/rxjs-interop';
+import { filter, map, take } from 'rxjs';
 
-export const publicGuard: CanActivateFn = (route, state) => {
+export const publicGuard: CanActivateFn = () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  if (!authService.loading() && authService.user()) {
-    router.navigate(['/']);
-    return false;
-  }
-  return true;
+  // Wait until loading is done, then check user
+  return toObservable(authService.loading).pipe(
+    filter(loading => !loading),
+    take(1),
+    map(() => {
+      if (authService.user()) {
+        router.navigate(['/']);
+        return false;
+      }
+      return true;
+    })
+  );
 };
