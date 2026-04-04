@@ -25,8 +25,11 @@ export class UserCacheService {
     const fetchPromise = (async () => {
       try {
         const docRef = doc(this.firebaseService.db, 'users', userId);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
+        const timeout = new Promise<null>((_, reject) =>
+          setTimeout(() => reject(new Error('User fetch timeout')), 8000)
+        );
+        const docSnap = await Promise.race([getDoc(docRef), timeout]) as any;
+        if (docSnap && docSnap.exists && docSnap.exists()) {
           const data = docSnap.data();
           this.userCache.set(userId, data);
           return data;

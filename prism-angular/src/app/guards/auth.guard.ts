@@ -1,23 +1,39 @@
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthService } from '../services/auth.service';
-import { toObservable } from '@angular/core/rxjs-interop';
-import { filter, map, take } from 'rxjs';
 
-export const authGuard: CanActivateFn = () => {
+export const authGuard: CanActivateFn = async () => {
   const authService = inject(AuthService);
   const router = inject(Router);
 
-  // Wait until loading is done, then check user
-  return toObservable(authService.loading).pipe(
-    filter(loading => !loading),
-    take(1),
-    map(() => {
-      if (!authService.user()) {
-        router.navigate(['/auth']);
-        return false;
+  // If already resolved, check immediately
+  if (!authService.loading()) {
+    if (!authService.user()) {
+      router.navigate(['/auth']);
+      return false;
+    }
+    return true;
+  }
+
+  // Otherwise wait for Firebase auth state to resolve (max 5s)
+  return new Promise((resolve) => {
+    const checkInterval = setInterval(() => {
+      if (!authService.loading()) {
+        clearInterval(checkInterval);
+        if (!authService.user()) {
+          router.navigate(['/auth']);
+          resolve(false);
+        } else {
+          resolve(true);
+        }
       }
-      return true;
-    })
-  );
+    }, 50);
+
+    // Timeout fallback - redirect to auth after 5s if still loading
+    setTimeout(() => {
+      clearInterval(checkInterval);
+      router.navigate(['/auth']);
+      resolve(false);
+    }, 5000);
+  });
 };

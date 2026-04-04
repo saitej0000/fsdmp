@@ -16,8 +16,10 @@ export class FirebaseService {
   constructor() {
     this.app = initializeApp(firebaseConfig);
     this.auth = getAuth(this.app);
-    // @ts-ignore
-    this.db = getFirestore(this.app, firebaseConfig.firestoreDatabaseId);
+    // Use the default Firestore database '(default)' — the named AI Studio
+    // database (firestoreDatabaseId) is a private AI Studio db and not suitable
+    // for app data. The default database is where your app's data should live.
+    this.db = getFirestore(this.app);
     this.googleProvider = new GoogleAuthProvider();
   }
 }
