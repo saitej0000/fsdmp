@@ -1,21 +1,12 @@
 ﻿[33mΓ¥»[39m Building...
 [32mΓ£ö[39m Building...
-[1mInitial chunk files[22m[2m | [22m[1mNames[22m        [2m | [22m[1mRaw size[22m[2m | [22m[1mEstimated transfer size[22m
-[32mmain-ZKN4ODZV.js[39m   [2m | [22m[2mmain[22m         [2m | [22m [36m1.00 MB[39m[2m | [22m              [36m248.17 kB[39m
-[32mstyles-ZOPQ2NKY.css[39m[2m | [22m[2mstyles[22m       [2m | [22m[36m30.75 kB[39m[2m | [22m                [36m5.35 kB[39m
-
-[1m [22m                  [2m | [22m[1mInitial total[22m[2m | [22m [1m[91m1.03 MB[39m[22m[2m | [22m              [1m253.52 kB[22m
-
-Application bundle generation failed. [5.964 seconds] - 2026-04-04T02:13:13.591Z
+Application bundle generation failed. [5.342 seconds] - 2026-04-04T02:39:37.655Z
 
 node.exe : 
-[1m[33m[33mΓû▓ [43;33m
-[[43;30mWARNING[43;33m]
-[0m [1mbundle initial 
-exceeded maximum budget. 
-Budget 500.00 kB was not 
-met by 533.89 kB with a 
-total of 1.03 MB.[0m
+[1m[31m[31mX [41;31m[
+[41;97mERROR[41;31m][0m 
+[1mCould not resolve 
+"tailwindcss"[0m
 At line:1 char:1
 + & "C:\Program 
 Files\nodejs/node.exe" 
@@ -26,21 +17,40 @@ Files\nodejs/node_mo ...
 ~~~~~~~~~~~~~~~~~~~
     + CategoryInfo        
       : NotSpecified: (  
-  [1m[33m[33mΓ...of 1   
- .03 MB.[0m:String) [    
+  [1m[31m[31mX...ailw   
+ indcss"[0m:String) [    
 ], RemoteException
     + FullyQualifiedError 
    Id : NativeCommandErr  
   or
  
 
-[39m[22m
-[1m[31m[31mX [41;31m[
-[41;97mERROR[41;31m][0m 
-[1mbundle initial 
-exceeded maximum budget. 
-Budget 1.00 MB was not 
-met by 33.89 kB with a 
-total of 1.03 MB.[0m
+    src/styles.css:2:8:
+[37m      2 Γöé @import 
+[32m"tailwindcss"[37m;
+        Γò╡         
+[32m~~~~~~~~~~~~~[0m
+
+  The "main" field here 
+was ignored because the 
+list of main fields to 
+use is currently set to 
+["style", "sass"].
+
+    node_modules/tailwindc
+ss/package.json:6:2:
+[37m      6 Γöé   
+[32m"main"[37m: 
+"lib/index.js",
+        Γò╡   
+[32m~~~~~~[0m
+
+  You can mark the path 
+"tailwindcss" as external 
+to exclude it from the 
+bundle, which will remove 
+this error and leave the 
+unresolved path in the 
+bundle.
 
 [39m[22m
