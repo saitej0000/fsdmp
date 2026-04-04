@@ -1,0 +1,69 @@
+<div class="bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 md:border md:rounded-sm md:mb-6 max-w-lg mx-auto" *ngIf="post">
+  <!-- Header -->
+  <div class="flex items-center justify-between p-3">
+    <a [routerLink]="'/profile/' + post.authorId" class="flex items-center space-x-3">
+      <img
+        [src]="author?.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + post.authorId"
+        [alt]="author?.username || 'User'"
+        class="w-8 h-8 rounded-full object-cover border border-gray-200 dark:border-gray-800"
+      />
+      <span class="font-semibold text-sm">{{ author?.username || 'loading...' }}</span>
+    </a>
+    <button class="p-1">
+      <lucide-icon [name]="MoreHorizontalIcon" [size]="20"></lucide-icon>
+    </button>
+  </div>
+
+  <!-- Image -->
+  <div class="relative w-full bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-[300px]">
+    <img
+      [src]="post.imageUrl"
+      [alt]="post.caption || 'Post'"
+      class="w-full h-auto max-h-[600px] object-contain"
+      loading="lazy"
+    />
+  </div>
+
+  <!-- Actions -->
+  <div class="p-3">
+    <div class="flex items-center justify-between mb-3">
+      <div class="flex items-center space-x-4">
+        <button class="hover:text-gray-500 transition-colors">
+          <lucide-icon [name]="HeartIcon" [size]="24" class="stroke-[1.5px]"></lucide-icon>
+        </button>
+        <a [routerLink]="'/post/' + post.id" class="hover:text-gray-500 transition-colors">
+          <lucide-icon [name]="MessageCircleIcon" [size]="24" class="stroke-[1.5px]"></lucide-icon>
+        </a>
+        <button class="hover:text-gray-500 transition-colors">
+          <lucide-icon [name]="SendIcon" [size]="24" class="stroke-[1.5px]"></lucide-icon>
+        </button>
+      </div>
+      <button class="hover:text-gray-500 transition-colors">
+        <lucide-icon [name]="BookmarkIcon" [size]="24" class="stroke-[1.5px]"></lucide-icon>
+      </button>
+    </div>
+
+    <!-- Likes -->
+    <div class="font-semibold text-sm mb-1">
+      {{ post.likesCount || 0 }} likes
+    </div>
+
+    <!-- Caption -->
+    <div class="text-sm mb-1">
+      <a [routerLink]="'/profile/' + post.authorId" class="font-semibold mr-2">
+        {{ author?.username || 'user' }}
+      </a>
+      <span>{{ post.caption }}</span>
+    </div>
+
+    <!-- Comments Link -->
+    <a *ngIf="post.commentsCount > 0" [routerLink]="'/post/' + post.id" class="text-gray-500 text-sm mb-1 block">
+      View all {{ post.commentsCount }} comments
+    </a>
+
+    <!-- Timestamp -->
+    <div class="text-gray-500 text-[10px] uppercase tracking-wide mt-2">
+      {{ timeAgo }}
+    </div>
+  </div>
+</div>

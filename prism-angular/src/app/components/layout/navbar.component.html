@@ -1,0 +1,97 @@
+<!-- Mobile Top Navbar -->
+<nav class="md:hidden fixed top-0 w-full z-50 bg-white dark:bg-black border-b border-gray-200 dark:border-gray-800 px-4 h-14 flex items-center justify-between">
+  <a routerLink="/" class="text-3xl font-instagram tracking-tighter mt-1">Prism</a>
+  <div class="flex items-center space-x-4">
+    <button (click)="toggleTheme()">
+      <!-- Use Lucide components for icons -->
+      <lucide-icon *ngIf="isDark" [name]="SunIcon" [size]="24" class="stroke-[1.5px]"></lucide-icon>
+      <lucide-icon *ngIf="!isDark" [name]="MoonIcon" [size]="24" class="stroke-[1.5px]"></lucide-icon>
+    </button>
+    <a routerLink="/notifications" class="relative">
+      <lucide-icon [name]="HeartIcon" [size]="24" class="stroke-[1.5px]"></lucide-icon>
+      <div *ngIf="unreadCount > 0" class="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full border-2 border-white dark:border-black"></div>
+    </a>
+    <a routerLink="/messages">
+      <lucide-icon [name]="MessageCircleIcon" [size]="24" class="stroke-[1.5px]"></lucide-icon>
+    </a>
+  </div>
+</nav>
+
+<!-- Desktop Sidebar -->
+<nav class="hidden md:flex fixed top-0 left-0 h-screen w-64 z-50 bg-white dark:bg-black border-r border-gray-200 dark:border-gray-800 flex-col py-8 px-4">
+  <a routerLink="/" class="text-4xl font-instagram tracking-tighter mb-10 px-3 mt-2">Prism</a>
+  <div class="flex flex-col space-y-2 flex-1">
+    
+    <a routerLink="/" routerLinkActive="font-bold" [routerLinkActiveOptions]="{exact: true}" class="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors">
+      <lucide-icon [name]="HomeIcon" [size]="28" class="stroke-[1.5px]" [class.stroke-[2.5px]]="true"></lucide-icon>
+      <span class="hidden md:block text-lg">Home</span>
+    </a>
+    
+    <a routerLink="/explore" routerLinkActive="font-bold" class="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors">
+      <lucide-icon [name]="SearchIcon" [size]="28" class="stroke-[1.5px]"></lucide-icon>
+      <span class="hidden md:block text-lg">Search</span>
+    </a>
+
+    <a routerLink="/messages" routerLinkActive="font-bold" class="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors">
+      <lucide-icon [name]="MessageCircleIcon" [size]="28" class="stroke-[1.5px]"></lucide-icon>
+      <span class="hidden md:block text-lg">Messages</span>
+    </a>
+
+    <a routerLink="/notifications" routerLinkActive="font-bold" class="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors relative">
+      <lucide-icon [name]="HeartIcon" [size]="28" class="stroke-[1.5px]"></lucide-icon>
+      <div *ngIf="unreadCount > 0" class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full flex items-center justify-center text-[10px] text-white font-bold border-2 border-white dark:border-black">
+        {{ unreadCount > 9 ? '9+' : unreadCount }}
+      </div>
+      <span class="hidden md:block text-lg">Notifications</span>
+    </a>
+
+    <a routerLink="/upload" routerLinkActive="font-bold" class="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors">
+      <lucide-icon [name]="PlusSquareIcon" [size]="28" class="stroke-[1.5px]"></lucide-icon>
+      <span class="hidden md:block text-lg">Create</span>
+    </a>
+
+    <!-- Profile Link -->
+    <ng-container *ngIf="authService.user() as user; else noAuth">
+      <a [routerLink]="'/profile/' + user.uid" routerLinkActive="font-bold" class="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors">
+        <img [src]="authService.profile()?.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.uid" alt="Profile" class="w-7 h-7 rounded-full object-cover" />
+        <span class="hidden md:block text-lg">Profile</span>
+      </a>
+    </ng-container>
+    <ng-template #noAuth>
+      <a routerLink="/auth" routerLinkActive="font-bold" class="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors">
+        <lucide-icon [name]="UserIcon" [size]="28" class="stroke-[1.5px]"></lucide-icon>
+        <span class="hidden md:block text-lg">Profile</span>
+      </a>
+    </ng-template>
+
+  </div>
+  
+  <div class="flex flex-col space-y-2 mt-auto">
+    <button (click)="toggleTheme()" class="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors w-full text-left">
+      <lucide-icon *ngIf="isDark" [name]="SunIcon" [size]="28" class="stroke-[1.5px]"></lucide-icon>
+      <lucide-icon *ngIf="!isDark" [name]="MoonIcon" [size]="28" class="stroke-[1.5px]"></lucide-icon>
+      <span class="hidden md:block text-lg">Switch Theme</span>
+    </button>
+    
+    <button *ngIf="authService.user()" (click)="logout()" class="flex items-center space-x-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-900 transition-colors w-full text-left text-red-500">
+      <lucide-icon [name]="LogOutIcon" [size]="28" class="stroke-[1.5px]"></lucide-icon>
+      <span class="hidden md:block text-lg">Log out</span>
+    </button>
+  </div>
+</nav>
+
+<!-- Mobile Bottom Navbar -->
+<nav class="md:hidden fixed bottom-0 w-full z-50 bg-white dark:bg-black border-t border-gray-200 dark:border-gray-800 px-6 h-12 flex items-center justify-between pb-safe">
+  <a routerLink="/" routerLinkActive="stroke-[2.5px]" [routerLinkActiveOptions]="{exact: true}" class="stroke-[1.5px]"><lucide-icon [name]="HomeIcon" [size]="28"></lucide-icon></a>
+  <a routerLink="/explore" routerLinkActive="stroke-[2.5px]" class="stroke-[1.5px]"><lucide-icon [name]="SearchIcon" [size]="28"></lucide-icon></a>
+  <a routerLink="/upload" routerLinkActive="stroke-[2.5px]" class="stroke-[1.5px]"><lucide-icon [name]="PlusSquareIcon" [size]="28"></lucide-icon></a>
+  
+  <ng-container *ngIf="authService.user() as user; else noAuthMobile">
+    <a [routerLink]="'/profile/' + user.uid">
+      <img [src]="authService.profile()?.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.uid" alt="Profile" class="w-7 h-7 rounded-full object-cover" />
+    </a>
+  </ng-container>
+  <ng-template #noAuthMobile>
+    <a routerLink="/auth" routerLinkActive="stroke-[2.5px]" class="stroke-[1.5px]"><lucide-icon [name]="UserIcon" [size]="28"></lucide-icon></a>
+  </ng-template>
+</nav>
