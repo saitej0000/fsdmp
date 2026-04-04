@@ -11,6 +11,15 @@ import {
   signInWithPopup
 } from 'firebase/auth';
 
+function withAuthTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('auth/timeout')), ms)
+    )
+  ]);
+}
+
 @Component({
   selector: 'app-auth',
   standalone: true,
@@ -45,13 +54,17 @@ export class AuthComponent {
     this.loading = true;
     try {
       if (this.isLogin) {
-        await signInWithEmailAndPassword(this.firebaseService.auth, this.email, this.password);
+        await withAuthTimeout(
+          signInWithEmailAndPassword(this.firebaseService.auth, this.email, this.password)
+        );
       } else {
-        await createUserWithEmailAndPassword(this.firebaseService.auth, this.email, this.password);
+        await withAuthTimeout(
+          createUserWithEmailAndPassword(this.firebaseService.auth, this.email, this.password)
+        );
       }
       this.router.navigate(['/']);
     } catch (err: any) {
-      this.error = this.getFriendlyError(err.code || err.message);
+      this.error = this.getFriendlyError(err.code || err.message || String(err));
     } finally {
       this.loading = false;
     }
@@ -62,10 +75,13 @@ export class AuthComponent {
     this.error = '';
     this.loading = true;
     try {
-      await signInWithPopup(this.firebaseService.auth, this.firebaseService.googleProvider);
+      await withAuthTimeout(
+        signInWithPopup(this.firebaseService.auth, this.firebaseService.googleProvider),
+        12000
+      );
       this.router.navigate(['/']);
     } catch (err: any) {
-      this.error = this.getFriendlyError(err.code || err.message);
+      this.error = this.getFriendlyError(err.code || err.message || String(err));
     } finally {
       this.loading = false;
     }
@@ -77,26 +93,30 @@ export class AuthComponent {
       return;
     }
     try {
-      await sendPasswordResetEmail(this.firebaseService.auth, this.email);
+      await withAuthTimeout(sendPasswordResetEmail(this.firebaseService.auth, this.email));
       this.successMessage = 'Password reset email sent! Check your inbox.';
       this.error = '';
     } catch (err: any) {
-      this.error = this.getFriendlyError(err.code || err.message);
+      this.error = this.getFriendlyError(err.code || err.message || String(err));
     }
   }
 
   private getFriendlyError(code: string): string {
     const errors: Record<string, string> = {
+      'auth/timeout': 'Connection timed out. Check your internet or Firebase configuration.',
       'auth/user-not-found': 'No account found with this email.',
       'auth/wrong-password': 'Incorrect password. Please try again.',
+      'auth/invalid-credential': 'Invalid email or password.',
       'auth/invalid-email': 'Please enter a valid email address.',
       'auth/email-already-in-use': 'An account with this email already exists.',
       'auth/weak-password': 'Password must be at least 6 characters.',
       'auth/too-many-requests': 'Too many attempts. Please try again later.',
       'auth/network-request-failed': 'Network error. Check your connection.',
       'auth/popup-closed-by-user': 'Sign-in popup was closed.',
-      'auth/invalid-credential': 'Invalid email or password.',
+      'auth/unauthorized-domain': 'This domain is not authorized in Firebase. Add it to Firebase Console → Authentication → Settings → Authorized domains.',
+      'auth/operation-not-allowed': 'Email/password sign-in is not enabled. Go to Firebase Console → Authentication → Sign-in method and enable it.',
     };
-    return errors[code] || code;
+    // Return raw code too so user can debug
+    return errors[code] ?? `Error: ${code}`;
   }
 }
