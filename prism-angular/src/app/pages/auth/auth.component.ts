@@ -1,4 +1,4 @@
-import { Component } from '@angular/core';
+import { Component, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
@@ -11,7 +11,7 @@ import {
   signInWithPopup
 } from 'firebase/auth';
 
-function withAuthTimeout<T>(promise: Promise<T>, ms = 8000): Promise<T> {
+function withAuthTimeout<T>(promise: Promise<T>, ms = 10000): Promise<T> {
   return Promise.race([
     promise,
     new Promise<never>((_, reject) =>
@@ -37,7 +37,8 @@ export class AuthComponent {
   constructor(
     private authService: AuthService,
     private firebaseService: FirebaseService,
-    private router: Router
+    private router: Router,
+    private cdr: ChangeDetectorRef
   ) {}
 
   toggleMode() {
@@ -52,6 +53,7 @@ export class AuthComponent {
     this.error = '';
     this.successMessage = '';
     this.loading = true;
+    this.cdr.detectChanges();
     try {
       if (this.isLogin) {
         await withAuthTimeout(
@@ -67,6 +69,7 @@ export class AuthComponent {
       this.error = this.getFriendlyError(err.code || err.message || String(err));
     } finally {
       this.loading = false;
+      this.cdr.detectChanges();
     }
   }
 
@@ -74,22 +77,25 @@ export class AuthComponent {
     if (this.loading) return;
     this.error = '';
     this.loading = true;
+    this.cdr.detectChanges();
     try {
       await withAuthTimeout(
         signInWithPopup(this.firebaseService.auth, this.firebaseService.googleProvider),
-        12000
+        15000
       );
       this.router.navigate(['/']);
     } catch (err: any) {
       this.error = this.getFriendlyError(err.code || err.message || String(err));
     } finally {
       this.loading = false;
+      this.cdr.detectChanges();
     }
   }
 
   async handleForgotPassword() {
     if (!this.email) {
       this.error = 'Please enter your email address first.';
+      this.cdr.detectChanges();
       return;
     }
     try {
@@ -98,12 +104,14 @@ export class AuthComponent {
       this.error = '';
     } catch (err: any) {
       this.error = this.getFriendlyError(err.code || err.message || String(err));
+    } finally {
+      this.cdr.detectChanges();
     }
   }
 
   private getFriendlyError(code: string): string {
     const errors: Record<string, string> = {
-      'auth/timeout': 'Connection timed out. Check your internet or Firebase configuration.',
+      'auth/timeout': 'Connection timed out. Firebase Auth may not be enabled for this project.',
       'auth/user-not-found': 'No account found with this email.',
       'auth/wrong-password': 'Incorrect password. Please try again.',
       'auth/invalid-credential': 'Invalid email or password.',
@@ -113,10 +121,9 @@ export class AuthComponent {
       'auth/too-many-requests': 'Too many attempts. Please try again later.',
       'auth/network-request-failed': 'Network error. Check your connection.',
       'auth/popup-closed-by-user': 'Sign-in popup was closed.',
-      'auth/unauthorized-domain': 'This domain is not authorized in Firebase. Add it to Firebase Console → Authentication → Settings → Authorized domains.',
-      'auth/operation-not-allowed': 'Email/password sign-in is not enabled. Go to Firebase Console → Authentication → Sign-in method and enable it.',
+      'auth/unauthorized-domain': 'This domain is not authorized. Add it to Firebase Console → Authentication → Authorized domains.',
+      'auth/operation-not-allowed': 'Email/password sign-in not enabled. Go to Firebase Console → Authentication → Sign-in method.',
     };
-    // Return raw code too so user can debug
     return errors[code] ?? `Error: ${code}`;
   }
 }
