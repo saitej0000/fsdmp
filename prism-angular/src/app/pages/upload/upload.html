@@ -1,1 +1,67 @@
-<p>upload works!</p>
+<div *ngIf="!authService.user()" class="flex flex-col items-center justify-center h-[60vh]">
+  <h2 class="text-2xl font-bold mb-4">Sign in to upload</h2>
+  <button routerLink="/auth" class="px-6 py-2 bg-purple-500 text-white rounded-full">Sign In</button>
+</div>
+
+<div *ngIf="authService.user() as user" @fadeInUp class="max-w-3xl mx-auto px-4 py-8">
+  <div class="bg-white dark:bg-[#111] rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 overflow-hidden">
+    <div class="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-between">
+      <h2 class="text-lg font-semibold mx-auto">Create new post</h2>
+      <button *ngIf="preview"
+        (click)="handleUpload()"
+        [disabled]="uploading"
+        class="absolute right-8 text-blue-500 font-semibold hover:text-blue-600 disabled:opacity-50"
+      >
+        {{ uploading ? 'Sharing...' : 'Share' }}
+      </button>
+    </div>
+
+    <div class="p-0 md:p-6">
+      <div *ngIf="!preview"
+        (dragover)="onDragOver($event)"
+        (dragleave)="onDragLeave($event)"
+        (drop)="onDrop($event)"
+        (click)="fileInput.click()"
+        class="border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors m-6"
+        [ngClass]="isDragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-700 hover:border-gray-400'"
+      >
+        <input type="file" #fileInput (change)="onFileSelected($event)" accept="image/*" class="hidden" />
+        <div class="flex flex-col items-center space-y-4">
+          <lucide-icon [name]="ImageIcon" [size]="64" class="text-gray-400"></lucide-icon>
+          <p class="text-xl font-medium">Drag photos and videos here</p>
+          <button class="px-4 py-2 bg-blue-500 text-white rounded-lg font-semibold hover:bg-blue-600 transition-colors">
+            Select from computer
+          </button>
+        </div>
+      </div>
+
+      <div *ngIf="preview" class="flex flex-col md:flex-row h-full md:h-[500px]">
+        <div class="w-full md:w-3/5 relative bg-gray-100 dark:bg-gray-900 flex items-center justify-center border-r border-gray-200 dark:border-gray-800">
+          <img [src]="preview" alt="Preview" class="w-full h-full object-contain" />
+          <button
+            (click)="clearFile()"
+            class="absolute top-4 right-4 p-2 bg-black/50 hover:bg-black/70 text-white rounded-full backdrop-blur-md transition-colors"
+          >
+            <lucide-icon [name]="XIcon" [size]="20"></lucide-icon>
+          </button>
+        </div>
+
+        <div class="w-full md:w-2/5 flex flex-col bg-white dark:bg-[#111]">
+          <div class="flex items-center space-x-3 p-4 border-b border-gray-200 dark:border-gray-800">
+            <img
+              [src]="user.photoURL || 'https://api.dicebear.com/7.x/avataaars/svg?seed=' + user.uid"
+              alt="Profile"
+              class="w-8 h-8 rounded-full"
+            />
+            <span class="font-semibold">{{ user.displayName || 'User' }}</span>
+          </div>
+          <textarea
+            [(ngModel)]="caption"
+            placeholder="Write a caption..."
+            class="w-full flex-1 p-4 bg-transparent border-none focus:ring-0 outline-none resize-none text-base"
+          ></textarea>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

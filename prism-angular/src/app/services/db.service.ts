@@ -1,5 +1,5 @@
 import { Injectable } from '@angular/core';
-import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp, increment, startAfter } from 'firebase/firestore';
+import { collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, query, where, orderBy, limit, serverTimestamp, increment, startAfter, addDoc } from 'firebase/firestore';
 import { FirebaseService } from './firebase.service';
 
 @Injectable({
@@ -15,21 +15,25 @@ export class DbService {
     }
     const snapshot = await getDocs(q);
     return {
-      posts: snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })),
+      posts: snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) })),
       lastDoc: snapshot.docs.length > 0 ? snapshot.docs[snapshot.docs.length - 1] : null
     };
   }
 
-  async getPost(postId: string) {
-    const docRef = doc(this.firebase.db, 'posts', postId);
-    const docSnap = await getDoc(docRef);
-    if (docSnap.exists()) {
-      return { id: docSnap.id, ...docSnap.data() };
-    }
-    return null;
+  async getPost(postId: string): Promise<any> {
+    const docSnap = await getDoc(doc(this.firebase.db, 'posts', postId));
+    return docSnap.exists() ? { id: docSnap.id, ...(docSnap.data() as any) } : null;
   }
 
-  // Adding minimal required stubs for now to get Home working
+  async createPost(postData: any) {
+    const newPostRef = doc(collection(this.firebase.db, 'posts'));
+    await setDoc(newPostRef, {
+      ...postData,
+      createdAt: serverTimestamp(),
+    });
+    return newPostRef.id;
+  }
+
   async createNotification(userId: string, actorId: string, type: 'like' | 'comment' | 'follow', postId?: string, commentId?: string) {
     if (userId === actorId) return;
     const notificationRef = doc(collection(this.firebase.db, 'notifications'));
@@ -37,5 +41,86 @@ export class DbService {
     if (postId) data.postId = postId;
     if (commentId) data.commentId = commentId;
     await setDoc(notificationRef, data);
+  }
+
+  async getUserPosts(userId: string) {
+    const q = query(collection(this.firebase.db, 'posts'), where('authorId', '==', userId), orderBy('createdAt', 'desc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+  }
+
+  async checkIsFollowing(followerId: string, followingId: string) {
+    const followRef = doc(this.firebase.db, 'follows', `${followerId}_${followingId}`);
+    const docSnap = await getDoc(followRef);
+    return docSnap.exists();
+  }
+
+  async followUser(followerId: string, followingId: string) {
+    const followRef = doc(this.firebase.db, 'follows', `${followerId}_${followingId}`);
+    await setDoc(followRef, { followerId, followingId, createdAt: serverTimestamp() });
+    await updateDoc(doc(this.firebase.db, 'users', followerId), { followingCount: increment(1) });
+    await updateDoc(doc(this.firebase.db, 'users', followingId), { followersCount: increment(1) });
+    await this.createNotification(followingId, followerId, 'follow');
+  }
+
+  async unfollowUser(followerId: string, followingId: string) {
+    const followRef = doc(this.firebase.db, 'follows', `${followerId}_${followingId}`);
+    await deleteDoc(followRef);
+    await updateDoc(doc(this.firebase.db, 'users', followerId), { followingCount: increment(-1) });
+    await updateDoc(doc(this.firebase.db, 'users', followingId), { followersCount: increment(-1) });
+  }
+
+  async updateUserProfile(userId: string, data: any) {
+    const userRef = doc(this.firebase.db, 'users', userId);
+    await updateDoc(userRef, data);
+  }
+
+  async getComments(postId: string) {
+    const q = query(collection(this.firebase.db, 'comments'), where('postId', '==', postId), orderBy('createdAt', 'asc'));
+    const snapshot = await getDocs(q);
+    return snapshot.docs.map(doc => ({ id: doc.id, ...(doc.data() as any) }));
+  }
+
+  async addComment(data: any) {
+    const docRef = await addDoc(collection(this.firebase.db, 'comments'), { ...data, createdAt: serverTimestamp() });
+    await updateDoc(doc(this.firebase.db, 'posts', data.postId), { commentsCount: increment(1) });
+    const post = await this.getPost(data.postId);
+    if (post) await this.createNotification(post.authorId, data.authorId, 'comment', data.postId, docRef.id);
+    return docRef.id;
+  }
+
+  async likePost(userId: string, postId: string) {
+    const likeRef = doc(this.firebase.db, 'likes', `${userId}_${postId}`);
+    await setDoc(likeRef, { userId, postId, createdAt: serverTimestamp() });
+    await updateDoc(doc(this.firebase.db, 'posts', postId), { likesCount: increment(1) });
+    const post = await this.getPost(postId);
+    if (post) await this.createNotification(post.authorId, userId, 'like', postId);
+  }
+
+  async unlikePost(userId: string, postId: string) {
+    const likeRef = doc(this.firebase.db, 'likes', `${userId}_${postId}`);
+    await deleteDoc(likeRef);
+    await updateDoc(doc(this.firebase.db, 'posts', postId), { likesCount: increment(-1) });
+  }
+
+  async getOrCreateConversation(userId1: string, userId2: string) {
+    const q = query(collection(this.firebase.db, 'conversations'), where('participantIds', 'array-contains', userId1));
+    const querySnapshot = await getDocs(q);
+    for (const docSnap of querySnapshot.docs) {
+      if ((docSnap.data() as any)['participantIds'].includes(userId2)) return docSnap.id;
+    }
+    const convRef = await addDoc(collection(this.firebase.db, 'conversations'), {
+      participantIds: [userId1, userId2], createdAt: serverTimestamp(), updatedAt: serverTimestamp()
+    });
+    return convRef.id;
+  }
+
+  async sendMessage(conversationId: string, senderId: string, text: string) {
+    await addDoc(collection(this.firebase.db, 'messages'), { conversationId, senderId, text, createdAt: serverTimestamp() });
+    await updateDoc(doc(this.firebase.db, 'conversations', conversationId), { lastMessage: text, lastMessageAt: serverTimestamp() });
+  }
+
+  async markNotificationRead(notificationId: string) {
+    await updateDoc(doc(this.firebase.db, 'notifications', notificationId), { read: true });
   }
 }
