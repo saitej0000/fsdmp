@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { PostCardComponent } from '../../components/ui/post-card.component';
 import { DbService } from '../../services/db.service';
@@ -20,12 +20,13 @@ import { LucideAngularModule, Camera } from 'lucide-angular';
   ]
 })
 export class HomeComponent implements OnInit {
-  posts: any[] = [];
-  loading = true;
-  loadingMore = false;
-  lastDoc: any = null;
-  hasMore = true;
-  error: string | null = null;
+  // All state as Signals for zoneless change detection
+  posts = signal<any[]>([]);
+  loading = signal(true);
+  loadingMore = signal(false);
+  hasMore = signal(true);
+  error = signal<string | null>(null);
+  lastDoc = signal<any>(null);
 
   CameraIcon = Camera;
 
@@ -37,36 +38,35 @@ export class HomeComponent implements OnInit {
 
   async fetchInitialPosts() {
     try {
-      this.loading = true;
-      this.error = null;
+      this.loading.set(true);
+      this.error.set(null);
       const data = await this.dbService.getPosts();
-      this.posts = data.posts;
-      this.lastDoc = data.lastDoc;
-      this.hasMore = !!data.lastDoc;
-    } catch (error: any) {
-      console.error('Error fetching posts:', error);
-      this.error = error?.message || 'Could not load posts. Please try again.';
+      this.posts.set(data.posts);
+      this.lastDoc.set(data.lastDoc);
+      this.hasMore.set(!!data.lastDoc);
+    } catch (err: any) {
+      this.error.set(err?.message || 'Could not load posts. Please try again.');
     } finally {
-      this.loading = false;
+      this.loading.set(false);
     }
   }
 
   async loadMorePosts() {
-    if (this.loadingMore || !this.hasMore || !this.lastDoc) return;
+    if (this.loadingMore() || !this.hasMore() || !this.lastDoc()) return;
     try {
-      this.loadingMore = true;
-      const data = await this.dbService.getPosts(this.lastDoc);
+      this.loadingMore.set(true);
+      const data = await this.dbService.getPosts(this.lastDoc());
       if (data.posts.length === 0) {
-        this.hasMore = false;
+        this.hasMore.set(false);
       } else {
-        this.posts = [...this.posts, ...data.posts];
-        this.lastDoc = data.lastDoc;
-        this.hasMore = !!data.lastDoc;
+        this.posts.update(existing => [...existing, ...data.posts]);
+        this.lastDoc.set(data.lastDoc);
+        this.hasMore.set(!!data.lastDoc);
       }
-    } catch (error) {
-      console.error('Error loading more posts:', error);
+    } catch (err) {
+      console.error('Error loading more posts:', err);
     } finally {
-      this.loadingMore = false;
+      this.loadingMore.set(false);
     }
   }
 }
